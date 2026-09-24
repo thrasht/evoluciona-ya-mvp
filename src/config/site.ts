@@ -13,7 +13,7 @@ export const site = {
   description:
     "Te asesoramos para implementar inteligencia artificial en tu negocio y chatbots con agentes de IA que atienden, venden y agendan por WhatsApp.",
   // TODO: production domain (must match the email domain below)
-  url: "https://evolucionaya.mx",
+  url: "https://www.evolucionaya.com",
   locale: "es_MX",
 };
 
@@ -23,7 +23,7 @@ export const contact = {
   phoneDisplay: "5514968660",
   phoneTel: "+525514968660",
   // TODO: must use the website's domain for Meta verification
-  email: "contacto@evolucionaya.mx",
+  email: "contacto@evolucionaya.com",
   hours: [
     { days: "Lunes a viernes", time: "9:00 a 19:00" },
     { days: "Sábado", time: "10:00 a 14:00" },
