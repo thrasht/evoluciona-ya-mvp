@@ -18,11 +18,11 @@ export const site = {
 };
 
 export const contact = {
-  // TODO: real number. Digits only, with country code (52 + 10 digits).
+  // Digits only, with country code (52 + 10 digits).
   whatsapp: "524425940931",
   phoneDisplay: "4425940931",
   phoneTel: "+524425940931",
-  // TODO: must use the website's domain for Meta verification
+  // On the website's domain (Meta verification); mailbox is live.
   email: "contacto@evolucionaya.com",
   hours: [
     { days: "Lunes a viernes", time: "9:00 a 19:00" },
@@ -39,5 +39,5 @@ export const contact = {
 export const legal = {
   legalName: "Eduardo Montes Hernández", // e.g. your full name as registered in the SAT
   address: "San Luis Potosí, San Luis Potosí, México", // full fiscal address as on the document
-  lastUpdated: "2026-09-20",
+  lastUpdated: "2026-10-01",
 };

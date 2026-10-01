@@ -40,9 +40,7 @@ until it is.
 
 All in `src/config/site.ts`:
 
-- `contact.whatsapp`, `phoneDisplay`, `phoneTel`: real number.
 - `site.url`: production domain.
-- `contact.email`: an address on that same domain.
 - `legal.legalName` and `legal.address`: exactly as on the document you upload to Meta.
   While empty, the footer and legal pages show a highlighted placeholder.
 
