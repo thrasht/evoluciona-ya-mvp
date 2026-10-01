@@ -1,6 +1,6 @@
-import { getHistory, getOrCreateConversation, markEventProcessed, saveMessage } from "./conversations";
+import { getHistory, getOrCreateConversation, markEventProcessed, saveMessage, switchToHuman } from "./conversations";
 import { debug, trace } from "./log";
-import { buildReply, UNSUPPORTED_TYPE_REPLY } from "./reply";
+import { buildReply, FALLBACK_REPLY, UNSUPPORTED_TYPE_REPLY } from "./reply";
 import { extractMessages, type IncomingMessage } from "./whatsapp/parse";
 import { sendText } from "./whatsapp/send";
 
@@ -62,15 +62,20 @@ async function handleMessage(message: IncomingMessage): Promise<void> {
     const history = await getHistory(conversation.id);
     debug(`LLM input wamid=${wamid} (${history.length} messages)`, history);
     step("llm: sending history to the model");
-    reply = await buildReply(history);
-    step("llm: reply received");
-    debug(`LLM output wamid=${wamid}`, reply);
+    const result = await buildReply(history);
+    if (result.ok) {
+      step("llm: reply received");
+      debug(`LLM output wamid=${wamid}`, result.text);
+      reply = result.text;
+    } else {
+      // We promise a human, so the bot must stop answering this conversation.
+      console.error(`[bot] llm failed, handing off to human wamid=${wamid} reason=${result.reason}`);
+      step("db: switching conversation to human mode");
+      await switchToHuman(conversation.id, `llm_failure: ${result.reason}`.slice(0, 500));
+      reply = FALLBACK_REPLY;
+    }
   } else {
     step("non-text message: using fixed reply, LLM skipped");
-  }
-  if (!reply) {
-    console.warn(`[bot] empty reply wamid=${wamid}`);
-    return;
   }
 
   step("whatsapp: sending reply via Cloud API");

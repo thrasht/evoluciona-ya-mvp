@@ -7,12 +7,16 @@ const conversations = vi.hoisted(() => ({
   getOrCreateConversation: vi.fn(),
   saveMessage: vi.fn(),
   getHistory: vi.fn(),
+  switchToHuman: vi.fn(),
 }));
 const reply = vi.hoisted(() => ({ buildReply: vi.fn() }));
 const send = vi.hoisted(() => ({ sendText: vi.fn() }));
 
+const FALLBACK = "En este momento no puedo generar una respuesta.";
+const UNSUPPORTED = "Por ahora solo puedo leer mensajes de texto.";
+
 vi.mock("@/lib/bot/conversations", () => conversations);
-vi.mock("@/lib/bot/reply", () => ({ ...reply, UNSUPPORTED_TYPE_REPLY: "Por ahora solo puedo leer mensajes de texto." }));
+vi.mock("@/lib/bot/reply", () => ({ ...reply, UNSUPPORTED_TYPE_REPLY: UNSUPPORTED, FALLBACK_REPLY: FALLBACK }));
 vi.mock("@/lib/bot/whatsapp/send", () => send);
 
 const { processIncoming } = await import("@/lib/bot/process-incoming");
@@ -28,12 +32,12 @@ beforeEach(() => {
   conversations.markEventProcessed.mockResolvedValue(true);
   conversations.getOrCreateConversation.mockResolvedValue(conversation("bot"));
   conversations.getHistory.mockResolvedValue([{ role: "user", content: "Hola, ¿qué hacen?" }]);
-  reply.buildReply.mockResolvedValue("¡Hola! Te ayudamos a implementar IA.");
+  reply.buildReply.mockResolvedValue({ ok: true, text: "¡Hola! Te ayudamos a implementar IA." });
   send.sendText.mockResolvedValue("wamid.OUT_1");
 });
 
 describe("processIncoming", () => {
-  it("saves the inbound message, replies with the LLM and saves the reply", async () => {
+  it("saves the inbound message, replies to the sender with the LLM and saves the reply", async () => {
     await processIncoming(text);
 
     expect(conversations.saveMessage).toHaveBeenNthCalledWith(
@@ -45,6 +49,7 @@ describe("processIncoming", () => {
       2,
       expect.objectContaining({ author: "bot", waMessageId: "wamid.OUT_1" }),
     );
+    expect(conversations.switchToHuman).not.toHaveBeenCalled();
   });
 
   it("skips a wa_message_id that was already processed", async () => {
@@ -68,18 +73,27 @@ describe("processIncoming", () => {
     await processIncoming(audio);
 
     expect(reply.buildReply).not.toHaveBeenCalled();
-    expect(send.sendText).toHaveBeenCalledWith("5215500000000", "Por ahora solo puedo leer mensajes de texto.");
+    expect(send.sendText).toHaveBeenCalledWith("5215500000000", UNSUPPORTED);
+  });
+
+  it("sends the fallback and hands off to a human when the LLM fails", async () => {
+    reply.buildReply.mockResolvedValue({ ok: false, reason: "timeout" });
+    await processIncoming(text);
+
+    expect(conversations.switchToHuman).toHaveBeenCalledWith("conv-1", "llm_failure: timeout");
+    expect(send.sendText).toHaveBeenCalledWith("5215500000000", FALLBACK);
+    expect(conversations.saveMessage).toHaveBeenNthCalledWith(2, expect.objectContaining({ author: "bot", content: FALLBACK }));
   });
 
   it("keeps processing the batch when one message fails", async () => {
     const batch = structuredClone(text);
     const second = { ...batch.entry[0].changes[0].value.messages[0], id: "wamid.TEST_TEXT_0002" };
     batch.entry[0].changes[0].value.messages.push(second);
-    reply.buildReply.mockRejectedValueOnce(new Error("LLM down"));
+    send.sendText.mockRejectedValueOnce(new Error("Cloud API 401"));
 
     await processIncoming(batch);
 
-    expect(conversations.saveMessage).toHaveBeenCalledWith(expect.objectContaining({ waMessageId: "wamid.TEST_TEXT_0001" }));
-    expect(send.sendText).toHaveBeenCalledTimes(1);
+    expect(send.sendText).toHaveBeenCalledTimes(2);
+    expect(conversations.saveMessage).toHaveBeenCalledWith(expect.objectContaining({ author: "bot", waMessageId: "wamid.OUT_1" }));
   });
 });

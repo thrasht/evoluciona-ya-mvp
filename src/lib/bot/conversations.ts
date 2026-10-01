@@ -26,6 +26,14 @@ export async function getOrCreateConversation(waPhone: string, displayName: stri
   return row;
 }
 
+/** Hands the conversation to a human: the bot stops replying until mode is set back to 'bot'. */
+export async function switchToHuman(conversationId: string, reason: string): Promise<void> {
+  await getDb()
+    .update(conversations)
+    .set({ mode: "human", handoffReason: reason, humanSince: sql`now()`, updatedAt: sql`now()` })
+    .where(eq(conversations.id, conversationId));
+}
+
 export async function saveMessage(input: {
   conversationId: string;
   author: MessageAuthor;

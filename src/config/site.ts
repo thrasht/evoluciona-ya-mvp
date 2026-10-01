@@ -19,9 +19,9 @@ export const site = {
 
 export const contact = {
   // TODO: real number. Digits only, with country code (52 + 10 digits).
-  whatsapp: "525514968660",
-  phoneDisplay: "5514968660",
-  phoneTel: "+525514968660",
+  whatsapp: "524425940931",
+  phoneDisplay: "4425940931",
+  phoneTel: "+524425940931",
   // TODO: must use the website's domain for Meta verification
   email: "contacto@evolucionaya.com",
   hours: [

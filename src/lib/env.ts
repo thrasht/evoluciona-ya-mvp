@@ -11,11 +11,6 @@ const schema = z.object({
   WHATSAPP_PHONE_NUMBER_ID: z.string().min(1),
   WHATSAPP_VERIFY_TOKEN: z.string().min(1),
   WHATSAPP_API_VERSION: z.string().regex(/^v\d+\.\d+$/, "expected e.g. v23.0"),
-  // Test number only: when set, every reply is sent to this number.
-  WHATSAPP_TEST_RECIPIENT: z
-    .string()
-    .regex(/^\d{10,15}$/, "digits only, with country code")
-    .optional(),
   DATABASE_URL: z.string().url(),
   OPENAI_API_KEY: z.string().min(1),
   LLM_MODEL: z.string().min(1),

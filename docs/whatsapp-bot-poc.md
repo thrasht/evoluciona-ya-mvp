@@ -26,7 +26,8 @@ To validate the full loop early, the first build goes beyond phase 1 and overrid
 - **Scope:** receive a message → save it in Postgres (phase 3 schema) → generate the reply with an LLM → send it via the Cloud API. Deduplication (`webhook_events`) and `after()` are included.
 - **LLM:** Vercel AI SDK (`ai` + `@ai-sdk/openai`) called directly with `OPENAI_API_KEY`; the model id comes from `LLM_MODEL`. Plain `generateText`, no tools. Switching to Claude later only touches `lib/bot/reply.ts` and `lib/env.ts`. The system prompt lives in `lib/bot/prompt.ts` and reads business data from `src/config/site.ts`.
 - **Signature validation is deferred** so the webhook can be called with plain curl and through ngrok. The route keeps the raw body and a `TODO(phase 2)`; do not expose the production URL to Meta until it is implemented. `verifySignature(rawBody, header, secret)` takes the secret as a parameter for testability.
-- **Fixed test recipient:** `WHATSAPP_TEST_RECIPIENT` (the only allow-listed number on the Meta test number) receives every reply. Without it, Mexican `521…` numbers are normalised to `52…` before sending.
+- **Reply recipient:** replies go to the sender's number (`from`); Mexican `521…` numbers are normalised to `52…` before sending. While on the Meta test number, the sender must be in the allowed recipients list or the send fails (error 131030).
+- **LLM fallback:** if the model errors, times out, returns empty text or doesn't finish normally (`finishReason !== 'stop'`), the user gets a fixed message saying a person will follow up, and the conversation switches to `mode = 'human'` (`handoff_reason = 'llm_failure: …'`, `human_since` set) so the bot stops replying. Set `mode` back to `bot` by hand to resume.
 - **Env validation is lazy:** `getEnv()` validates on first use instead of at import, because `next build` imports route modules and would fail on machines or Vercel Preview builds without the variables.
 - **Known trade-off:** once the 200 is returned, Meta never retries; a failure inside `after()` is logged (`[bot] … wamid=…`) and that message gets no reply. The inbound message is saved first, so nothing is lost.
 
@@ -311,7 +312,6 @@ All variables are validated in `lib/env.ts` with Zod on first use (`getEnv()`), 
 | `WHATSAPP_APP_SECRET` | Meta → App settings → Basic | Signs every webhook; never expose client-side |
 | `WHATSAPP_VERIFY_TOKEN` | You choose it | Random string, e.g. `openssl rand -hex 32` |
 | `WHATSAPP_API_VERSION` | Meta docs | Graph API version, e.g. `v23.0`; use the latest one shown in the dashboard |
-| `WHATSAPP_TEST_RECIPIENT` | You set it | Optional. While on the test number, every reply goes here (`525514968660`) |
 | `OPENAI_API_KEY` | OpenAI dashboard | Current iteration only; replaced if the provider changes |
 | `LLM_MODEL` | You choose it | OpenAI model id used by `reply.ts` |
 | `DATABASE_URL` | Vercel Marketplace (Neon) | Local Docker URL in .env.local during development; Neon pooled URL, injected by Vercel, in production |
